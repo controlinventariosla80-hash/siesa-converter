@@ -278,14 +278,15 @@ def _merge_col_lines(col_lines: list) -> list:
             existing = sorted(pos for pos, _ in all_cols)
 
     # Regla 5: prefijo de grupo para nombres duplicados
+    sorted_cols = sorted(all_cols, key=lambda x: x[0])
+
     if group_spans:
         name_count: dict = {}
-        for _, n in all_cols:
+        for _, n in sorted_cols:
             name_count[n] = name_count.get(n, 0) + 1
 
-        seen: dict = {}
-        result = []
-        for pos, name in sorted(all_cols, key=lambda x: x[0]):
+        prefixed = []
+        for pos, name in sorted_cols:
             if name_count.get(name, 1) > 1:
                 prefix = next(
                     (gname for gs, ge, gname in group_spans if gs <= pos <= ge),
@@ -294,18 +295,21 @@ def _merge_col_lines(col_lines: list) -> list:
                 final = f"{prefix}_{name}" if prefix else name
             else:
                 final = name
+            prefixed.append((pos, final))
+        sorted_cols = prefixed
 
-            if final in seen:
-                seen[final] += 1
-                final = f"{final}_{seen[final]}"
-            else:
-                seen[final] = 1
+    # Siempre deduplicar nombres finales (con o sin grupos)
+    seen: dict = {}
+    result = []
+    for pos, name in sorted_cols:
+        if name in seen:
+            seen[name] += 1
+            result.append((pos, f"{name}_{seen[name]}"))
+        else:
+            seen[name] = 1
+            result.append((pos, name))
 
-            result.append((pos, final))
-
-        return result
-
-    return sorted(all_cols, key=lambda x: x[0])
+    return result
 
 
 # ---------------------------------------------------------------------------
